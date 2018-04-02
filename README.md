@@ -1,9 +1,14 @@
 # ESP32Stepper for Domoticz with Web server
 USE Stepper Motor with ESP32
 
+Use a Steppermotor through Wifi and conrtol it with Domoticz or from your browser.
+
 ## Screenshots
-#### Display type: details
+#### Display type: webserver
 ![Webserver](/shutterserver.png?raw=true "Included assets")
+
+#### Display type: Arduino monitor
+![Serail monitor](/shutterserial.png?raw=true "Included assets")
 
 
 ## Materials to use

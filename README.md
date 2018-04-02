@@ -12,19 +12,19 @@ Use a Steppermotor through Wifi and conrtol it with Domoticz or from your browse
 
 
 ## Materials to use
-Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="https://www.banggood.com/ESP32-Development-Board-WiFiBluetooth-Ultra-Low-Power-Consumption-Dual-Cores-ESP-32-ESP-32S-Board-p-1109512.html">Banggood</a>
+Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="https://www.banggood.com/ESP32-Development-Board-WiFiBluetooth-Ultra-Low-Power-Consumption-Dual-Cores-ESP-32-ESP-32S-Board-p-1109512.html?p=VQ141018240205201801">Available at Banggood</a>
 
- Driver: A4988 Driver <a href="https://www.banggood.com/3Pcs-3D-Printer-A4988-Reprap-Stepping-Stepper-Step-Motor-Driver-Module-p-967057.html">Banggood</a>
+ Driver: A4988 Driver <a href="https://www.banggood.com/3Pcs-3D-Printer-A4988-Reprap-Stepping-Stepper-Step-Motor-Driver-Module-p-967057.html?p=VQ141018240205201801">Available at Banggood</a>
  
- Stepper: type 17HS1362-P4130 <a href="https://www.banggood.com/NEMA-17-42-Hybrid-Stepper-Motor-5mm-Round-Shaft-Two-Phase-Four-Line-Stepper-Motor-p-1148356.html">Banggood</a>
+ Stepper: type 17HS1362-P4130 <a href="https://www.banggood.com/NEMA-17-42-Hybrid-Stepper-Motor-5mm-Round-Shaft-Two-Phase-Four-Line-Stepper-Motor-p-1148356.html?p=VQ141018240205201801">Available at Banggood</a>
  
  HAL Sensor: ADAFruit Digital
  
  Capacitor: 100uF, 25V
  
- PowerSupply(1):  5 Volt
+ PowerSupply(1):  5 Volt <a href="https://www.banggood.com/3Pcs-DC-DC-4_5-40V-Step-Down-LED-Voltmeter-USB-Voltage-Converter-Buck-Module-5V2A-p-1178249.html?p=VQ141018240205201801">Available at Banggood</a>
  
- PowerSupply(2): 12 Volt
+ PowerSupply(2): 12 Volt <a href="https://www.banggood.com/AC-100-240V-to-DC-12V-5A-60W-Power-Supply-Adapter-For-LED-Strip-Light-p-994870.html?p=VQ141018240205201801">Available at Banggood</a>
  
 
  ## Wired connections

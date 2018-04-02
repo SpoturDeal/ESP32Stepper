@@ -265,3 +265,6 @@ String printUsage() {
 }
 
 ```
+## Project Photo
+#### Display type: Arduino monitor
+![Overview](/parts_built_together.png?raw=true "Included assets")

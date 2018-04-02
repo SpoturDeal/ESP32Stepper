@@ -18,7 +18,7 @@ Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="http
  
  Stepper: type 17HS1362-P4130 <a href="https://www.banggood.com/NEMA-17-42-Hybrid-Stepper-Motor-5mm-Round-Shaft-Two-Phase-Four-Line-Stepper-Motor-p-1148356.html?p=VQ141018240205201801">Available at Banggood</a>
  
- HAL Sensor: ADAFruit Digital
+ HAL Sensor: ADAFruit Digital <a href="https://www.banggood.com/Hall-Effect-Magnetic-Sensor-Module-DC-5V-For-Arduino-p-76469.html?p=VQ141018240205201801">Available at Banggood</a>
  
  Capacitor: 100uF, 25V
  

@@ -1,5 +1,10 @@
-# ESP32Stepper
+# ESP32Stepper for Domoticz with Web server
 USE Stepper Motor with ESP32
+
+## Screenshots
+#### Display type: details
+![Webserver](/shutterserver.png?raw=true "Included assets")
+
 
 ## Materials to use
 Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="https://www.banggood.com/ESP32-Development-Board-WiFiBluetooth-Ultra-Low-Power-Consumption-Dual-Cores-ESP-32-ESP-32S-Board-p-1109512.html">Banggood</a>

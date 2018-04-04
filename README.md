@@ -3,6 +3,8 @@ USE Stepper Motor with ESP32
 
 Use a Steppermotor through Wifi and conrtol it with Domoticz or from your browser.
 
+Version ending on <b>v5</b> has control through jQuery and layout with Bootstrap and Fontawesome 
+
 ## Screenshots
 #### Display type: webserver
 ![Webserver](/shutterserver.png?raw=true "Included assets")

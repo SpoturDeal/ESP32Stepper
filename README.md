@@ -66,6 +66,7 @@ Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="http
  Stepper: type 17HS1362-P4130
 */
 #include <WiFi.h>
+#include <EEPROM.h>
 
 const char* ssid     = "YOUR SSID";
 const char* password = "YOUR WIFI PASSWORD";
@@ -77,7 +78,7 @@ int oneRotation = 200; // 200 x 1.8 degrees per step = 360
 int maxSteps = 2300;   // maximum steps
 bool debugPrint = false;
 #define chkUpPin 34
-
+uint8_t EEPROMaddress = 130;
 
 WiFiServer server(80);
 
@@ -107,13 +108,18 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   Serial.println("Place this IP address into a browser window");
-  // Blink onboard LED to signify its connected
-  blink(5);
+  
+ 
   server.begin();
   // move the shutter to start position
+  if (EEPROM.read(EEPROMaddress) > 0){
+     maxSteps = EEPROM.read(EEPROMaddress);
+  }
   currPos=maxSteps;
   rollDown(400);
   rollUp(maxSteps);
+  // Blink onboard LED to signify its connected
+  blink(3);
 
 }
 
@@ -125,7 +131,7 @@ void loop(){
   if (client) {                             
     while (client.connected()) {            
       if (client.available()) {                 // if there's client data
-        String respMsg = "";                    // HTTP Response Message
+        String respMsg = "Current position = " + String(currPos); ;                    // HTTP Response Message
         // Read the first line of the request
         String req = client.readStringUntil('\r');
         if (debugPrint ==true){
@@ -163,23 +169,42 @@ void loop(){
               respMsg = "OK: Steps done up = " + String(exSteps) + " current position =" + String(currPos);
             }
           }
-        } else {
-          respMsg = printUsage();
+        } else if (req.indexOf("/stepper/setup") != -1) {  
+          maxSteps = getValue(req);
+          if (maxSteps != EEPROM.read(EEPROMaddress)){
+             EEPROM.write(EEPROMaddress,maxSteps);
+          }
+          respMsg = "OK: Maximum steps set at: " + String(maxSteps);
         }
         client.flush();
         // Prepare the response
-        String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25;padding: 10;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style></head>";
-        s += "<body><h1>Shutter control through WiFi</h1>";
-        if (respMsg.length() > 0) {
-           s += "<button onmousedown=location.href='/stepper/movedown?200'>Down [1 round]</button>&nbsp;Shutter&nbsp;";
-           s += "<button onmousedown=location.href='/stepper/moveup?200'>Up [1 round]</button><br><br>";
-           s += "<button onmousedown=location.href='/stepper/percent?60'>Percent close</button><br><br>";
-           s += respMsg;
-           s += "</body></html>";
-        } else {
-           s += "OK";
-           s += "\n";
-        }   
+        String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
+        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\"></head>";
+        
+        s += "<body><h1>Stepper control through WiFi</h1>";
+        s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_down\"><i class=\"fas fa-arrow-alt-circle-down fa-2x\"></i></button>&nbsp;";
+        s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_up\"><i class=\"fas fa-arrow-alt-circle-up fa-2x\"></i></button>&nbsp;";
+        s += "<button type=\"button\" class=\"btn btn-dark btn-lg dropdown-toggle\" type=\"button\" id=\"ddMB\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"><i class=\"fas fa-percent fa-2x\"></i>&nbsp;</button><div class=\"dropdown-menu\" aria-labelledby=\"ddMB\"><a class=\"dropdown-item\" id=\"btn-10\" href=\"#\">10%</a><a class=\"dropdown-item\"id=\"btn-20\" href=\"#\">20%</a><a class=\"dropdown-item\" id=\"btn-30\" href=\"#\">30%</a>";
+        s += "<a class=\"dropdown-item\" id=\"btn-40\" href=\"#\">40%</a><a class=\"dropdown-item\"id=\"btn-50\" href=\"#\">50%</a><a class=\"dropdown-item\" id=\"btn-60\" href=\"#\">60%</a>";
+        s += "<a class=\"dropdown-item\" id=\"btn-70\" href=\"#\">70%</a><a class=\"dropdown-item\"id=\"btn-80\" href=\"#\">80%</a><a class=\"dropdown-item\" id=\"btn-90\" href=\"#\">90%</a>";
+        s += "</div><br><br>";
+        s += "<div id=\"w\" class=\"alert alert-success\" role=\"alert\" style=\"display:none;\">One moment please.</div>";
+        s += "<div id=\"r\" class=\"alert alert-info\" role=\"alert\">" + respMsg + "</div>";
+        s += printUsage();
+        s +="<script src=\"https://code.jquery.com/jquery-3.2.1.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" ></script><script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\"></script>";
+        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script>";
+        s +="<script>$(document).ready(function($) {";
+        s +="function send(dowhat){$('#r').hide(); $('#w').show(); $.get({url:'/api/stepper/' + dowhat,success:function(data){$('#w').hide(); $('#r').html(data).show(); }}); } ";
+        s +="$('#btn_down').click(function(){send('movedown?" + String(maxSteps) + "');});";
+        s +="$('#btn_up').click(function(){send('moveup?" + String(maxSteps) + "');});";
+        s +="$('.dropdown-item').click(function(){ var per= $(this).attr('id').split('-');send('percent?'+per[1]);  });";
+        s +="});";
+        s += "</script></body></html>";
+        // Stuur het antwoord naar de gebruiker
+        if (req.indexOf("/api/") != -1){
+          s = respMsg;
+        }
+
         // Send the response to the client
         client.print(s);
         delay(1);
@@ -260,11 +285,12 @@ int getValue(String req) {
 String printUsage() {
   // Prepare the usage response
   String s = "<p><u>Stepper usage</u><br><br>";
-  s += "http://{ip_address}/stepper/moveup?200<br>";
-  s += "http://{ip_address}/stepper/movedown?200<br>";
+  s += "http://{ip_address}/stepper/moveup?" + String(maxSteps)+"<br>";
+  s += "http://{ip_address}/stepper/movedown?" + String(maxSteps)+"<br>";
   s += "http://{ip_address}/stepper/percent?50<br><br><b>Maximum number of steps is " + String(maxSteps)+"<br>Percent is 1 (open) to 100 (Closed)</b></p>";
   return(s);
 }
+
 
 ```
 ## Project Photo

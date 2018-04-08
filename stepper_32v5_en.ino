@@ -1,6 +1,6 @@
 /*
  #ESP32 Web Server to Control Stepper motor
- new version 04 April 2018
+ new version 08 April 2018
  Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3
  Driver: A4988 Driver
  Stepper: type 17HS1362-P4130
@@ -16,6 +16,7 @@ int StepPin = 19;      // Step GPIO
 int currPos = 0;
 int oneRotation = 200; // 200 x 1.8 degrees per step = 360
 int maxSteps = 2300;   // maximum steps
+int testVar = 0;       // to check if maxsteps is stored
 bool debugPrint = false;
 #define chkUpPin 34
 uint8_t EEPROMaddress = 130;
@@ -25,6 +26,7 @@ WiFiServer server(80);
 void setup()
 {
   Serial.begin(115200);
+  EEPROM.begin(32);
   pinMode(DirPin, OUTPUT);      // set Stepper direction pin mode  
   pinMode(StepPin, OUTPUT);     // set Stepper step mode
   pinMode(22, INPUT);           // set top detection
@@ -51,10 +53,13 @@ void setup()
   
  
   server.begin();
-  // move the shutter to start position
-  if (EEPROM.read(EEPROMaddress) > 0){
-     maxSteps = EEPROM.read(EEPROMaddress);
+  // Check if the maximum number of steps has been stored in flash
+  EEPROM.get(EEPROMaddress,testVar);
+  if (testVar > 0){
+     EEPROM.get(EEPROMaddress,maxSteps);
   }
+  
+  // move the shutter to start position
   currPos=maxSteps;
   rollDown(400);
   rollUp(maxSteps);
@@ -111,16 +116,23 @@ void loop(){
           }
         } else if (req.indexOf("/stepper/setup") != -1) {  
           maxSteps = getValue(req);
-          if (maxSteps != EEPROM.read(EEPROMaddress)){
-             EEPROM.write(EEPROMaddress,maxSteps);
+          // Check if we don't store old info because EEPROM has limit 100.000 write/erase
+          EEPROM.get(EEPROMaddress,testVar);
+          if (maxSteps != testVar){
+             EEPROM.put(EEPROMaddress,maxSteps);
+             EEPROM.commit();
+             Serial.print("setup/maxSteps EEPROM data (MaxSteps) at Address = "+String(EEPROMaddress)+" is  : ");
+             testVar = 0; // To prove it read from EEPROM!
+             EEPROM.get(EEPROMaddress,testVar);
+             Serial.println(testVar);
           }
           respMsg = "OK: Maximum steps set at: " + String(maxSteps);
         }
         client.flush();
         // Prepare the response
         String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
-        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\"></head>";
-        
+        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\">";
+        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script></head>";        
         s += "<body><h1>Stepper control through WiFi</h1>";
         s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_down\"><i class=\"fas fa-arrow-alt-circle-down fa-2x\"></i></button>&nbsp;";
         s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_up\"><i class=\"fas fa-arrow-alt-circle-up fa-2x\"></i></button>&nbsp;";
@@ -132,7 +144,6 @@ void loop(){
         s += "<div id=\"r\" class=\"alert alert-info\" role=\"alert\">" + respMsg + "</div>";
         s += printUsage();
         s +="<script src=\"https://code.jquery.com/jquery-3.2.1.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" ></script><script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\"></script>";
-        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script>";
         s +="<script>$(document).ready(function($) {";
         s +="function send(dowhat){$('#r').hide(); $('#w').show(); $.get({url:'/api/stepper/' + dowhat,success:function(data){$('#w').hide(); $('#r').html(data).show(); }}); } ";
         s +="$('#btn_down').click(function(){send('movedown?" + String(maxSteps) + "');});";
@@ -227,6 +238,7 @@ String printUsage() {
   String s = "<p><u>Stepper usage</u><br><br>";
   s += "http://{ip_address}/stepper/moveup?" + String(maxSteps)+"<br>";
   s += "http://{ip_address}/stepper/movedown?" + String(maxSteps)+"<br>";
-  s += "http://{ip_address}/stepper/percent?50<br><br><b>Maximum number of steps is " + String(maxSteps)+"<br>Percent is 1 (open) to 100 (Closed)</b></p>";
+  s += "http://{ip_address}/stepper/percent?50<br>";
+  s += "http://{ip_address}/stepper/setup?2200<br><br><b>Maximum number of steps is " + String(maxSteps)+"<br>Percent is 1 (open) to 100 (Closed)</b></p>";
   return(s);
 }

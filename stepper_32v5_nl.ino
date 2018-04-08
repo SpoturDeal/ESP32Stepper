@@ -8,16 +8,17 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
-const char* ssid     = "JE SSID";
-const char* password = "JE WACHTWOORD";
+const char* ssid     = "YOUR SSID";
+const char* password = "YOUR WIFI PASSWORD";
 int LED = 12;          // GPIO 12
 int DirPin = 18;       // Richting GPIO
 int StepPin = 19;      // Stap GPIO
 int currPos = 0;
 int oneRotation = 200; // 200 x 1.8 graden per stap = 360  
 int maxSteps = 2300;   // maximum aantal stappen
+int testVar = 0;
 bool debugPrint = false;
-uint8_t EEPROMaddress = 130;
+uint8_t EEPROMaddress = 4;
 
 #define chkUpPin 34
 
@@ -26,6 +27,7 @@ WiFiServer server(80);
 void setup()
 {
   Serial.begin(115200);
+  EEPROM.begin(32);
   pinMode(DirPin, OUTPUT);      // instellen richting pin mode
   pinMode(StepPin, OUTPUT);     // instellen stap mode
   pinMode(LED, OUTPUT);         // knipper LED als Network OK
@@ -49,10 +51,12 @@ void setup()
  
   
   server.begin();
-  // Breng het gordijn naar de begin stand open.
-  if (EEPROM.read(EEPROMaddress) > 0){
-     maxSteps = EEPROM.read(EEPROMaddress);
+  // Check of het totaal aantal stappen is ingesteld
+  EEPROM.get(EEPROMaddress,testVar);
+  if (testVar > 0){
+     EEPROM.get(EEPROMaddress,maxSteps);
   }
+  // Breng het gordijn naar de begin stand open.
   currPos=maxSteps;
   rollDown(400);
   rollUp(maxSteps);
@@ -108,8 +112,15 @@ void loop(){
           }
         } else if (req.indexOf("/stepper/setup") != -1) {  
           maxSteps = getValue(req);
-          if (maxSteps != EEPROM.read(EEPROMaddress)){
-             EEPROM.write(EEPROMaddress,maxSteps);
+          // Check if we don't store old info because EEPROM has limit 100.000 write/erase
+          EEPROM.get(EEPROMaddress,testVar);
+          if (maxSteps != testVar){
+             EEPROM.put(EEPROMaddress,maxSteps);
+             EEPROM.commit();
+             Serial.print("setup/maxSteps EEPROM data (MaxSteps) at Address = "+String(EEPROMaddress)+" is  : ");
+             testVar = 0; // To prove it read from EEPROM!
+             EEPROM.get(EEPROMaddress,testVar);
+             Serial.println(testVar);
           }
           respMsg = "OK: Maximum stappen ingesteld op: " + String(maxSteps);
         }  
@@ -119,8 +130,8 @@ void loop(){
         client.flush();
         // Bereid antwoord voor
         String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
-        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\"></head>";
-        
+        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\">";
+        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script></head>";
         s += "<body><h1>Rolgordijn besturing via WiFi</h1>";
         s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_down\"><i class=\"fas fa-arrow-alt-circle-down fa-2x\"></i></button>&nbsp;";
         s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_up\"><i class=\"fas fa-arrow-alt-circle-up fa-2x\"></i></button>&nbsp;";
@@ -132,7 +143,6 @@ void loop(){
         s += "<div id=\"r\" class=\"alert alert-info\" role=\"alert\">" + respMsg + "</div>";
         s += printUsage();
         s +="<script src=\"https://code.jquery.com/jquery-3.2.1.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" ></script><script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\"></script>";
-        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script>";
         s +="<script>$(document).ready(function($) {";
         s +="function send(dowhat){$('#r').hide(); $('#w').show(); $.get({url:'/api/stepper/' + dowhat,success:function(data){$('#w').hide(); $('#r').html(data).show(); }}); } ";
         s +="$('#btn_down').click(function(){send('movedown?" + String(maxSteps) + "');});";
@@ -225,8 +235,9 @@ int getValue(String req) {
 String printUsage() {
   // Bereid een gebruiksaanwijzing voor
   String s = "<p><u>Stapper gebruik</u><br><br>";
-  s += "[Omhoog]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://{ip_address}/stepper/moveup?" + String(maxSteps) + "<br>";
-  s += "[Omlaag]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://{ip_address}/stepper/movedown?" + String(maxSteps) + "<br>";
-  s += "[Percentage]&nbsp;http://{ip_address}/stepper/percent?50<br><br><b>Maximum aantal stappen is " + String(maxSteps)+"<br>(percent) .. Percentage is 1 (Open) tot 100 (Dicht)</b></p>";
+  s += "[Omhoog]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://{ip_address}/stepper/moveup?" + String(maxSteps) + "<br>";
+  s += "[Omlaag]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://{ip_address}/stepper/movedown?" + String(maxSteps) + "<br>";
+  s += "[Percentage]&nbsp;&nbsp;http://{ip_address}/stepper/percent?50<br>";
+  s += "[Max stappen]&nbsp;http://{ip_address}/stepper/setup?2200<br><br><b>Maximum aantal stappen is " + String(maxSteps)+"<br>(percent) .. Percentage is 1 (Open) tot 100 (Dicht)</b></p>";
   return(s);
 }

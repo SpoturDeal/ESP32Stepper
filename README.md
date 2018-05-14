@@ -33,6 +33,8 @@ Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="http
  
  PowerSupply(2): 12 Volt <a href="https://www.banggood.com/AC-100-240V-to-DC-12V-5A-60W-Power-Supply-Adapter-For-LED-Strip-Light-p-994870.html?p=VQ141018240205201801">Available at Banggood</a>
  
+ ## Where to obtain the parts and materials
+ Banggood is where I buy all my parts <a href="https://bit.ly/2IBUsds">Visit Banggood</a>
 
  ## Wired connections
  

@@ -8,8 +8,8 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
-const char* ssid     = "SSID";
-const char* password = "Password";
+const char* ssid     = "YOUR SSID";
+const char* password = "YOUR WIFI PASSWORD";
 int LED = 12;          // Feedback GPIO 12
 int DirPin = 18;       // Direction GPIO
 int StepPin = 19;      // Step Pulse GPIO

@@ -10,9 +10,11 @@
 
 const char* ssid     = "YOUR SSID";
 const char* password = "YOUR WIFI PASSWORD";
-int LED = 12;          // GPIO 12
+int LED = 12;          // LED Feedback GPIO 12
 int DirPin = 18;       // Direction GPIO
-int StepPin = 19;      // Step GPIO
+int StepPin = 19;      // Step Pulse GPIO
+int EnablePin = 5;     // Stepper enable GPIO
+int motorSpeed = 2;      // Set step delay for motor in ms (smaller is faster)
 int currPos = 0;
 int oneRotation = 200; // 200 x 1.8 degrees per step = 360
 int maxSteps = 2300;   // maximum steps
@@ -29,6 +31,7 @@ void setup()
   EEPROM.begin(32);
   pinMode(DirPin, OUTPUT);      // set Stepper direction pin mode  
   pinMode(StepPin, OUTPUT);     // set Stepper step mode
+  pinMode(EnablePin, OUTPUT);   // set Stepper enable pin
   pinMode(22, INPUT);           // set top detection
   pinMode(23, INPUT);           // set down detection
   pinMode(LED, OUTPUT);         // ready LED
@@ -166,6 +169,7 @@ void loop(){
 }
 
 void rollDown(int doSteps) {
+    digitalWrite(EnablePin, LOW);
     digitalWrite(DirPin, LOW);
     for (int i=1; i <= doSteps; i++){ 
         currPos++;
@@ -173,16 +177,18 @@ void rollDown(int doSteps) {
            break;
         }
         digitalWrite(StepPin, HIGH);
-        delay(10);
+        delay(motorSpeed);
         digitalWrite(StepPin,LOW );
-        delay(10); 
+        delay(motorSpeed); 
     }
+    digitalWrite(EnablePin, HIGH);
     if (debugPrint ==true){
        Serial.println("Down to position " + String(currPos));
     }
     stopRoll();
 }
 void rollUp(int doSteps) {
+    digitalWrite(EnablePin, LOW);
     digitalWrite(DirPin, HIGH);
     for (int i=1; i <= doSteps; i++){
         currPos--; 
@@ -192,11 +198,12 @@ void rollUp(int doSteps) {
           break;
         }
         digitalWrite(StepPin, HIGH);
-        delay(10);
+        delay(motorSpeed);
         digitalWrite(StepPin,LOW );
-        delay(10);
+        delay(motorSpeed);
         
     }
+    digitalWrite(EnablePin, HIGH);
     if (debugPrint ==true){
        Serial.println("up to position " + String(currPos));
     }
@@ -206,7 +213,10 @@ void stopRoll(){
     if (debugPrint ==true){
        Serial.println("Stop");
     }
+    digitalWrite(EnablePin, LOW);
     digitalWrite(DirPin, HIGH);
+    delay(1000);
+    digitalWrite(EnablePin, HIGH);
 }
 void blink(int blinks) {
   for (int i = 0; i <= blinks;i++){

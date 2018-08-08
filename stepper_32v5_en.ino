@@ -8,19 +8,24 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
+int ZMax = 23;         // Top Endstop Pin
+int ZMin = 22;         // Bottom Endstop Pin
 const char* ssid     = "YOUR SSID";
 const char* password = "YOUR WIFI PASSWORD";
 int LED = 12;          // LED Feedback GPIO 12
 int DirPin = 18;       // Direction GPIO
-int StepPin = 19;      // Step Pulse GPIO
-int EnablePin = 5;     // Stepper enable GPIO
-int motorSpeed = 2;      // Set step delay for motor in ms (smaller is faster)
+int StepPin = 19;      // Step GPIO
+int EnablePin = 21;     // Stepper enable pin
+int MicroStep1Pin = 34; // Stepper MS1
+int Microstep2Pin = 35; // Stepper MS2
+int Microstep3Pin = 32; // Stepper MS3
+int motorSpeed = 1000;      // Set step delay for motor in microseconds (smaller is faster)
 int currPos = 0;
-int oneRotation = 200; // 200 x 1.8 degrees per step = 360
+int oneRotation = 3200; // 200 x 1.8 degrees per step = 360
+bool Mechanical_Endstop = 1; // If using mechanical endstops set to 1. If using HALL sensor, set to 0
 int maxSteps = 2300;   // maximum steps
 int testVar = 0;       // to check if maxsteps is stored
 bool debugPrint = false;
-#define chkUpPin 34
 uint8_t EEPROMaddress = 130;
 
 WiFiServer server(80);
@@ -32,11 +37,16 @@ void setup()
   pinMode(DirPin, OUTPUT);      // set Stepper direction pin mode  
   pinMode(StepPin, OUTPUT);     // set Stepper step mode
   pinMode(EnablePin, OUTPUT);   // set Stepper enable pin
-  pinMode(22, INPUT);           // set top detection
-  pinMode(23, INPUT);           // set down detection
+  pinMode(MicroStep1Pin, OUTPUT);	//set Microstep 1 config
+  pinMode(MicroStep2Pin, OUTPUT);	//set Microstep 2 config
+  pinMode(MicroStep3Pin, OUTPUT);	//set Microstep 3 config
+  pinMode(ZMax, INPUT);           // set top detection
+  pinMode(ZMin, INPUT);           // set down detection
   pinMode(LED, OUTPUT);         // ready LED
-  pinMode(chkUpPin,INPUT);
- 
+  
+  digitalWrite(MicroStep1Pin, LOW); // Initialized with microstepping off
+  digitalWrite(MicroStep2Pin, LOW); // Initialized with microstepping off
+  digitalWrite(MicroStep3Pin, LOW); // Initialized with microstepping off
 
   // We start by connecting to a WiFi network
   Serial.println();
@@ -85,7 +95,6 @@ void loop(){
         if (debugPrint ==true){
            Serial.println(req);
         }
-        client.flush();
         if (req.indexOf("/stepper/movedown") != -1) {
           int stepsToDo = getValue(req);
           if (stepsToDo < 1 || stepsToDo > maxSteps || stepsToDo == 0) {
@@ -131,7 +140,6 @@ void loop(){
           }
           respMsg = "OK: Maximum steps set at: " + String(maxSteps);
         }
-        client.flush();
         // Prepare the response
         String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
         s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\">";
@@ -173,13 +181,19 @@ void rollDown(int doSteps) {
     digitalWrite(DirPin, LOW);
     for (int i=1; i <= doSteps; i++){ 
         currPos++;
-        if (currPos > maxSteps){
-           break;
+        int dnPin = digitalRead(ZMin); 
+        if (Mechanical_Endstop == 1 && dnPin == LOW || currPos >= maxSteps){
+            currPos=maxSteps;
+            break;
+        }
+        else if (Mechanical_Endstop == 0 && dnPin == HIGH || currPos >= maxSteps){
+            currPos=maxSteps;
+            break;
         }
         digitalWrite(StepPin, HIGH);
-        delay(motorSpeed);
+        delayMicroseconds(motorSpeed);
         digitalWrite(StepPin,LOW );
-        delay(motorSpeed); 
+        delayMicroseconds(motorSpeed); 
     }
     digitalWrite(EnablePin, HIGH);
     if (debugPrint ==true){
@@ -192,15 +206,19 @@ void rollUp(int doSteps) {
     digitalWrite(DirPin, HIGH);
     for (int i=1; i <= doSteps; i++){
         currPos--; 
-        int upPin = digitalRead(chkUpPin); 
-        if (upPin == HIGH || currPos < 5){
+        int upPin = digitalRead(ZMax); 
+        if (Mechanical_Endstop == 1 && upPin == LOW || currPos < 5){
+          currPos=0;
+          break;
+        }
+        else if (Mechanical_Endstop == 0 && upPin == HIGH || currPos < 5){
           currPos=0;
           break;
         }
         digitalWrite(StepPin, HIGH);
-        delay(motorSpeed);
+        delayMicroseconds(motorSpeed);
         digitalWrite(StepPin,LOW );
-        delay(motorSpeed);
+        delayMicroseconds(motorSpeed);
         
     }
     digitalWrite(EnablePin, HIGH);

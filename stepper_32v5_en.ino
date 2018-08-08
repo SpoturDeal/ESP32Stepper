@@ -8,11 +8,11 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
-const char* ssid     = "SSID";
-const char* password = "Password";
-int LED = 12;          // LED Status output
 int ZMax = 23;         // Top Endstop Pin
 int ZMin = 22;         // Bottom Endstop Pin
+const char* ssid     = "YOUR SSID";
+const char* password = "YOUR WIFI PASSWORD";
+int LED = 12;          // LED Feedback GPIO 12
 int DirPin = 18;       // Direction GPIO
 int StepPin = 19;      // Step GPIO
 int EnablePin = 21;     // Stepper enable pin

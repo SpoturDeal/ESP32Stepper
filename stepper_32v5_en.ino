@@ -1,17 +1,18 @@
 /*
  #ESP32 Web Server to Control Stepper motor
- new version 08 April 2018
+ new version 08 August 2018
  Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3
  Driver: A4988 Driver
  Stepper: type 17HS1362-P4130
 */
 #include <WiFi.h>
 #include <EEPROM.h>
+#include "credentials.h"
 
 int ZMax = 23;         // Top Endstop Pin
 int ZMin = 22;         // Bottom Endstop Pin
-const char* ssid     = "YOUR SSID";
-const char* password = "YOUR WIFI PASSWORD";
+const char* ssid     = my_SSID;         // set in credentials.h     
+const char* password = my_PASSWORD;     // set in credentials.h  
 int LED = 12;          // LED Feedback GPIO 12
 int DirPin = 18;       // Direction GPIO
 int StepPin = 19;      // Step GPIO
@@ -34,15 +35,15 @@ void setup()
 {
   Serial.begin(115200);
   EEPROM.begin(32);
-  pinMode(DirPin, OUTPUT);      // set Stepper direction pin mode  
-  pinMode(StepPin, OUTPUT);     // set Stepper step mode
-  pinMode(EnablePin, OUTPUT);   // set Stepper enable pin
+  pinMode(DirPin, OUTPUT);        // set Stepper direction pin mode  
+  pinMode(StepPin, OUTPUT);       // set Stepper step mode
+  pinMode(EnablePin, OUTPUT);     // set Stepper enable pin
   pinMode(MicroStep1Pin, OUTPUT);	//set Microstep 1 config
   pinMode(MicroStep2Pin, OUTPUT);	//set Microstep 2 config
   pinMode(MicroStep3Pin, OUTPUT);	//set Microstep 3 config
   pinMode(ZMax, INPUT);           // set top detection
   pinMode(ZMin, INPUT);           // set down detection
-  pinMode(LED, OUTPUT);         // ready LED
+  pinMode(LED, OUTPUT);           // ready LED
   
   digitalWrite(MicroStep1Pin, LOW); // Initialized with microstepping off
   digitalWrite(MicroStep2Pin, LOW); // Initialized with microstepping off
@@ -85,11 +86,11 @@ int value = 0;
 
 void loop(){
  
-  WiFiClient client = server.available();        // listen for incoming clients
+  WiFiClient client = server.available();                          // listen for incoming clients
   if (client) {                             
     while (client.connected()) {            
-      if (client.available()) {                 // if there's client data
-        String respMsg = "Current position = " + String(currPos); ;                    // HTTP Response Message
+      if (client.available()) {                                     // if there's client data
+        String respMsg = "Current position = " + String(currPos);   // HTTP Response Message
         // Read the first line of the request
         String req = client.readStringUntil('\r');
         if (debugPrint ==true){
@@ -162,12 +163,12 @@ void loop(){
         s +="$('.dropdown-item').click(function(){ var per= $(this).attr('id').split('-');send('percent?'+per[1]);  });";
         s +="});";
         s += "</script></body></html>";
-        // Stuur het antwoord naar de gebruiker
+        // Send response to user 
         if (req.indexOf("/api/") != -1){
           s = respMsg;
         }
 
-        // Send the response to the client
+        // Send the response to the client (browser)
         client.print(s);
         delay(1);
         break;

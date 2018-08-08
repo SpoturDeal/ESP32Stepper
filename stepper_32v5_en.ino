@@ -6,8 +6,13 @@
  Stepper: type 17HS1362-P4130
 */
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <EEPROM.h>
 #include "credentials.h"
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <HTTPClient.h>
+#include <ArduinoOTA.h>
 
 int ZMax = 23;         // Top Endstop Pin
 int ZMin = 22;         // Bottom Endstop Pin
@@ -28,6 +33,18 @@ int maxSteps = 2300;   // maximum steps
 int testVar = 0;       // to check if maxsteps is stored
 bool debugPrint = false;
 uint8_t EEPROMaddress = 130;
+uint8_t EEmaxSteps = 4;
+uint8_t EEcurrStep = 8;
+uint8_t EEsetInit = 12;
+String ipStr = "";
+bool noInit = true;
+
+#define NTP_OFFSET 2 * 60 * 60 // In seconds
+#define NTP_INTERVAL 60 * 1000 // In miliseconds
+#define NTP_ADDRESS "ntp2.xs4all.nl"
+ 
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
 WiFiServer server(80);
 
@@ -35,6 +52,7 @@ void setup()
 {
   Serial.begin(115200);
   EEPROM.begin(32);
+ 
   pinMode(DirPin, OUTPUT);        // set Stepper direction pin mode  
   pinMode(StepPin, OUTPUT);       // set Stepper step mode
   pinMode(EnablePin, OUTPUT);     // set Stepper enable pin
@@ -53,30 +71,73 @@ void setup()
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  // Wifi with OTA
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
   }
+  ArduinoOTA.setHostname("ESP32_Stepper");
+  ArduinoOTA.setPassword(my_OTA_PW);
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+
+  ArduinoOTA.begin();
+  
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   Serial.println("Place this IP address into a browser window");
-  
- 
-  server.begin();
-  // Check if the maximum number of steps has been stored in flash
-  EEPROM.get(EEPROMaddress,testVar);
+  // make an ip address you can read
+  IPAddress myIP = WiFi.localIP();
+  ipStr = String(myIP[0])+"."+String(myIP[1])+"."+String(myIP[2])+"."+String(myIP[3]); 
+  // get the values from EEprom
+  EEPROM.get(EEmaxSteps,testVar);
   if (testVar > 0){
-     EEPROM.get(EEPROMaddress,maxSteps);
+     maxSteps=testVar;
   }
-  
+  EEPROM.get(EEcurrStep,testVar);
+  if (testVar > 0){
+     currPos=testVar;
+  } else {
+     currPos=0;
+  }
   // move the shutter to start position
-  currPos=maxSteps;
-  rollDown(400);
-  rollUp(maxSteps);
+  EEPROM.get(EEsetInit,testVar);
+  if (testVar == 0){
+     //currPos=maxSteps;
+     rollDown(400);
+     rollUp(maxSteps);
+     noInit = false;
+  }
+  server.begin();
+  timeClient.begin();
   // Blink onboard LED to signify its connected
   blink(3);
 
@@ -85,8 +146,14 @@ void setup()
 int value = 0;
 
 void loop(){
- 
+  ArduinoOTA.handle();
   WiFiClient client = server.available();                          // listen for incoming clients
+  timeClient.update();
+  String formattedTime = timeClient.getFormattedTime();
+  // once a day do a restart if noInit in not false is. (sometimes the esp hangs up)
+  if (formattedTime=="00:00:02" && noInit == true){
+       ESP.restart();
+  }
   if (client) {                             
     while (client.connected()) {            
       if (client.available()) {                                     // if there's client data
@@ -130,16 +197,14 @@ void loop(){
         } else if (req.indexOf("/stepper/setup") != -1) {  
           maxSteps = getValue(req);
           // Check if we don't store old info because EEPROM has limit 100.000 write/erase
-          EEPROM.get(EEPROMaddress,testVar);
-          if (maxSteps != testVar){
-             EEPROM.put(EEPROMaddress,maxSteps);
-             EEPROM.commit();
-             Serial.print("setup/maxSteps EEPROM data (MaxSteps) at Address = "+String(EEPROMaddress)+" is  : ");
-             testVar = 0; // To prove it read from EEPROM!
-             EEPROM.get(EEPROMaddress,testVar);
-             Serial.println(testVar);
-          }
+          writeData(EEmaxSteps,maxSteps);
           respMsg = "OK: Maximum steps set at: " + String(maxSteps);
+        } else if (req.indexOf("/stepper/init") != -1) {  
+          int initSet = getValue(req);
+          writeData(EEsetInit,initSet);
+          respMsg = "[" + formattedTime + "] OK: Initialisation set for: " + String(initSet);
+        } else if (req.indexOf("/stepper/restart") != -1) {  
+          ESP.restart();   
         }
         // Prepare the response
         String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
@@ -163,7 +228,7 @@ void loop(){
         s +="$('.dropdown-item').click(function(){ var per= $(this).attr('id').split('-');send('percent?'+per[1]);  });";
         s +="});";
         s += "</script></body></html>";
-        // Send response to user 
+        // Send response to user if api used no html
         if (req.indexOf("/api/") != -1){
           s = respMsg;
         }
@@ -176,7 +241,24 @@ void loop(){
     }
   }
 }
-
+void writeData(uint8_t addr, int datInt){
+    testVar = 0;
+    // to conserve flash memory only write when differs
+    EEPROM.get(addr,testVar);
+    if (datInt != testVar){
+       EEPROM.put(addr,datInt);
+       EEPROM.commit();
+       if (debugPrint ==true){
+          Serial.println("EEPROM address:  4 = max Steps");
+          Serial.println("EEPROM address:  8 = current Position");
+          Serial.println("EEPROM address: 12 = 0 -> initialise needed 1-> not needed");
+          Serial.print("Updated EEPROM data at Address: "+String(addr)+" with value: ");
+          testVar = 0; 
+          EEPROM.get(addr,testVar);
+          Serial.println(testVar);
+       }   
+    }   
+}
 void rollDown(int doSteps) {
     digitalWrite(EnablePin, LOW);
     digitalWrite(DirPin, LOW);
@@ -229,6 +311,7 @@ void rollUp(int doSteps) {
     stopRoll();
 }
 void stopRoll(){
+    writeData(EEcurrStep,endedAT);
     if (debugPrint ==true){
        Serial.println("Stop");
     }
@@ -265,9 +348,12 @@ int getValue(String req) {
 String printUsage() {
   // Prepare the usage response
   String s = "<p><u>Stepper usage</u><br><br>";
-  s += "http://{ip_address}/stepper/moveup?" + String(maxSteps)+"<br>";
-  s += "http://{ip_address}/stepper/movedown?" + String(maxSteps)+"<br>";
-  s += "http://{ip_address}/stepper/percent?50<br>";
-  s += "http://{ip_address}/stepper/setup?2200<br><br><b>Maximum number of steps is " + String(maxSteps)+"<br>Percent is 1 (open) to 100 (Closed)</b></p>";
+  s += "[Omhoog]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/moveup?" + String(maxSteps) + "<br>";
+  s += "[Omlaag]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/movedown?" + String(maxSteps) + "<br>";
+  s += "[Percentage]&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/percent?50<br>";
+  s += "[Max stappen]&nbsp;&nbsp;http://"+ipStr+"/stepper/setup?2200<br>";
+  s += "[Initialiseer]&nbsp;http://"+ipStr+"/stepper/init?0<br>";
+  s += "[Herstart]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/restart<br>";
+  s += "<br><br><b>Maximum number steps is " + String(maxSteps)+"<br>(percent) .. Percentage is 1 (Open) to 100 (Closed)<br>(init) .. 1 = done, 0 = do again</b></p>";
   return(s);
 }

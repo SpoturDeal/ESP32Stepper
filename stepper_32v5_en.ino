@@ -14,6 +14,8 @@
 #include <HTTPClient.h>
 #include <ArduinoOTA.h>
 
+// define variables
+
 int ZMax = 23;         // Top Endstop Pin
 int ZMin = 22;         // Bottom Endstop Pin
 const char* ssid     = my_SSID;         // set in credentials.h     
@@ -39,9 +41,11 @@ uint8_t EEsetInit = 12;
 String ipStr = "";
 bool noInit = true;
 
+
+// choose the ntp server that serves your timezone
 #define NTP_OFFSET 2 * 60 * 60 // In seconds
 #define NTP_INTERVAL 60 * 1000 // In miliseconds
-#define NTP_ADDRESS "ntp2.xs4all.nl"
+#define NTP_ADDRESS "ntp2.xs4all.nl"   //  NTP SERVER
  
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
@@ -51,7 +55,7 @@ WiFiServer server(80);
 void setup()
 {
   Serial.begin(115200);
-  EEPROM.begin(32);
+  EEPROM.begin(32);  // start EEprom
  
   pinMode(DirPin, OUTPUT);        // set Stepper direction pin mode  
   pinMode(StepPin, OUTPUT);       // set Stepper step mode
@@ -79,8 +83,8 @@ void setup()
     delay(5000);
     ESP.restart();
   }
-  ArduinoOTA.setHostname("ESP32_Stepper");
-  ArduinoOTA.setPassword(my_OTA_PW);
+  ArduinoOTA.setHostname("ESP32_Stepper");   // Hostname for OTA
+  ArduinoOTA.setPassword(my_OTA_PW);         // set in credidentials.h 
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -107,7 +111,7 @@ void setup()
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
 
-  ArduinoOTA.begin();
+  ArduinoOTA.begin();   // Start OTA
   
   Serial.println("");
   Serial.println("WiFi connected");
@@ -118,10 +122,12 @@ void setup()
   IPAddress myIP = WiFi.localIP();
   ipStr = String(myIP[0])+"."+String(myIP[1])+"."+String(myIP[2])+"."+String(myIP[3]); 
   // get the values from EEprom
+  // first the maximum number of steps that can be done
   EEPROM.get(EEmaxSteps,testVar);
   if (testVar > 0){
      maxSteps=testVar;
   }
+  // get the last set position
   EEPROM.get(EEcurrStep,testVar);
   if (testVar > 0){
      currPos=testVar;
@@ -136,6 +142,7 @@ void setup()
      rollUp(maxSteps);
      noInit = false;
   }
+  // start server and time client 
   server.begin();
   timeClient.begin();
   // Blink onboard LED to signify its connected
@@ -146,6 +153,7 @@ void setup()
 int value = 0;
 
 void loop(){
+  // if OTA called we need this
   ArduinoOTA.handle();
   WiFiClient client = server.available();                          // listen for incoming clients
   timeClient.update();
@@ -196,43 +204,46 @@ void loop(){
           }
         } else if (req.indexOf("/stepper/setup") != -1) {  
           maxSteps = getValue(req);
-          // Check if we don't store old info because EEPROM has limit 100.000 write/erase
+          // Store the maximum number of steps
           writeData(EEmaxSteps,maxSteps);
           respMsg = "OK: Maximum steps set at: " + String(maxSteps);
         } else if (req.indexOf("/stepper/init") != -1) {  
+          // Init is used to set the start position
           int initSet = getValue(req);
           writeData(EEsetInit,initSet);
           respMsg = "[" + formattedTime + "] OK: Initialisation set for: " + String(initSet);
         } else if (req.indexOf("/stepper/restart") != -1) {  
+          // manually restart the ESP32
           ESP.restart();   
         }
         // Prepare the response
-        String s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
-        s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\">";
-        s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script></head>";        
-        s += "<body><h1>Stepper control through WiFi</h1>";
-        s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_down\"><i class=\"fas fa-arrow-alt-circle-down fa-2x\"></i></button>&nbsp;";
-        s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_up\"><i class=\"fas fa-arrow-alt-circle-up fa-2x\"></i></button>&nbsp;";
-        s += "<button type=\"button\" class=\"btn btn-dark btn-lg dropdown-toggle\" type=\"button\" id=\"ddMB\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"><i class=\"fas fa-percent fa-2x\"></i>&nbsp;</button><div class=\"dropdown-menu\" aria-labelledby=\"ddMB\"><a class=\"dropdown-item\" id=\"btn-10\" href=\"#\">10%</a><a class=\"dropdown-item\"id=\"btn-20\" href=\"#\">20%</a><a class=\"dropdown-item\" id=\"btn-30\" href=\"#\">30%</a>";
-        s += "<a class=\"dropdown-item\" id=\"btn-40\" href=\"#\">40%</a><a class=\"dropdown-item\"id=\"btn-50\" href=\"#\">50%</a><a class=\"dropdown-item\" id=\"btn-60\" href=\"#\">60%</a>";
-        s += "<a class=\"dropdown-item\" id=\"btn-70\" href=\"#\">70%</a><a class=\"dropdown-item\"id=\"btn-80\" href=\"#\">80%</a><a class=\"dropdown-item\" id=\"btn-90\" href=\"#\">90%</a>";
-        s += "</div><br><br>";
-        s += "<div id=\"w\" class=\"alert alert-success\" role=\"alert\" style=\"display:none;\">One moment please.</div>";
-        s += "<div id=\"r\" class=\"alert alert-info\" role=\"alert\">" + respMsg + "</div>";
-        s += printUsage();
-        s +="<script src=\"https://code.jquery.com/jquery-3.2.1.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" ></script><script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\"></script>";
-        s +="<script>$(document).ready(function($) {";
-        s +="function send(dowhat){$('#r').hide(); $('#w').show(); $.get({url:'/api/stepper/' + dowhat,success:function(data){$('#w').hide(); $('#r').html(data).show(); }}); } ";
-        s +="$('#btn_down').click(function(){send('movedown?" + String(maxSteps) + "');});";
-        s +="$('#btn_up').click(function(){send('moveup?" + String(maxSteps) + "');});";
-        s +="$('.dropdown-item').click(function(){ var per= $(this).attr('id').split('-');send('percent?'+per[1]);  });";
-        s +="});";
-        s += "</script></body></html>";
-        // Send response to user if api used no html
-        if (req.indexOf("/api/") != -1){
+        String s = "Something went wrong";
+        if (req.indexOf("/api/") == -1){
+          s = "<!DOCTYPE html><html><head><meta name='viewport' content='initial-scale=1.0'><meta charset='utf-8'><style>#map {height: 100%;}html, body {height: 100%;margin: 25px;padding: 10px;font-family: Sans-Serif;} p{font-family:'Courier New', Sans-Serif;}</style>";
+          s += "<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\">";
+          s +="<script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\"></script></head>";        
+          s += "<body><h1>Stepper control through WiFi</h1>";
+          s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_down\"><i class=\"fas fa-arrow-alt-circle-down fa-2x\"></i></button>&nbsp;";
+          s += "<button type=\"button\" class=\"btn btn-primary btn-lg\" id=\"btn_up\"><i class=\"fas fa-arrow-alt-circle-up fa-2x\"></i></button>&nbsp;";
+          s += "<button type=\"button\" class=\"btn btn-dark btn-lg dropdown-toggle\" type=\"button\" id=\"ddMB\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"><i class=\"fas fa-percent fa-2x\"></i>&nbsp;</button><div class=\"dropdown-menu\" aria-labelledby=\"ddMB\"><a class=\"dropdown-item\" id=\"btn-10\" href=\"#\">10%</a><a class=\"dropdown-item\"id=\"btn-20\" href=\"#\">20%</a><a class=\"dropdown-item\" id=\"btn-30\" href=\"#\">30%</a>";
+          s += "<a class=\"dropdown-item\" id=\"btn-40\" href=\"#\">40%</a><a class=\"dropdown-item\"id=\"btn-50\" href=\"#\">50%</a><a class=\"dropdown-item\" id=\"btn-60\" href=\"#\">60%</a>";
+          s += "<a class=\"dropdown-item\" id=\"btn-70\" href=\"#\">70%</a><a class=\"dropdown-item\"id=\"btn-80\" href=\"#\">80%</a><a class=\"dropdown-item\" id=\"btn-90\" href=\"#\">90%</a>";
+          s += "</div><br><br>";
+          s += "<div id=\"w\" class=\"alert alert-success\" role=\"alert\" style=\"display:none;\">One moment please.</div>";
+          s += "<div id=\"r\" class=\"alert alert-info\" role=\"alert\">" + respMsg + "</div>";
+          s += printUsage();
+          s +="<script src=\"https://code.jquery.com/jquery-3.2.1.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" ></script><script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\"></script>";
+          s +="<script>$(document).ready(function($) {";
+          s +="function send(dowhat){$('#r').hide(); $('#w').show(); $.get({url:'/api/stepper/' + dowhat,success:function(data){$('#w').hide(); $('#r').html(data).show(); }}); } ";
+          s +="$('#btn_down').click(function(){send('movedown?" + String(maxSteps) + "');});";
+          s +="$('#btn_up').click(function(){send('moveup?" + String(maxSteps) + "');});";
+          s +="$('.dropdown-item').click(function(){ var per= $(this).attr('id').split('-');send('percent?'+per[1]);  });";
+          s +="});";
+          s += "</script></body></html>";
+          
+        } else if (req.indexOf("/api/") != -1){ // Send response to user if api used no html
           s = respMsg;
         }
-
         // Send the response to the client (browser)
         client.print(s);
         delay(1);
@@ -249,11 +260,15 @@ void writeData(uint8_t addr, int datInt){
        EEPROM.put(addr,datInt);
        EEPROM.commit();
        if (debugPrint ==true){
-          Serial.println("EEPROM address:  4 = max Steps");
-          Serial.println("EEPROM address:  8 = current Position");
-          Serial.println("EEPROM address: 12 = 0 -> initialise needed 1-> not needed");
-          Serial.print("Updated EEPROM data at Address: "+String(addr)+" with value: ");
+          String tcl="0 -> initialise needed 1-> not needed";
+          if (addr==4) {
+            tcl="maximum Steps";
+          } else if (addr==8) {
+           
+          } tcl="current position"; 
+          Serial.print("Updated EEPROM data: " + tcl + " with value: ");
           testVar = 0; 
+          // retrieve the data to show the stored value
           EEPROM.get(addr,testVar);
           Serial.println(testVar);
        }   
@@ -311,6 +326,7 @@ void rollUp(int doSteps) {
     stopRoll();
 }
 void stopRoll(){
+    // write current position to EEprom
     writeData(EEcurrStep,endedAT);
     if (debugPrint ==true){
        Serial.println("Stop");
@@ -329,8 +345,18 @@ void blink(int blinks) {
   }
 }
 int getValue(String req) {
+  // check for question mark
   int val_start = req.indexOf('?');
-  int val_end   = req.length();
+  if (val_start ==-1) {
+     //if they forget ? check for =
+     val_start = req.indexOf('=');
+  }
+  // check if request is closed by /
+  int val_end = req.indexOf('/',val_start);
+  if (val_end== -1){
+     // if not closed by / the chck for end of line (gives aan HTTP at the end????)
+     int val_end   = req.length();
+  }
   if (val_start == -1 || val_end == -1) {
      if (debugPrint ==true){
         Serial.print("Invalid request: ");
@@ -346,7 +372,7 @@ int getValue(String req) {
   return(req.toInt());
 }
 String printUsage() {
-  // Prepare the usage response
+  // Prepare the usage response here is ipStr used to show a proper IP address
   String s = "<p><u>Stepper usage</u><br><br>";
   s += "[Omhoog]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/moveup?" + String(maxSteps) + "<br>";
   s += "[Omlaag]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://"+ipStr+"/stepper/movedown?" + String(maxSteps) + "<br>";

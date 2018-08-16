@@ -10,7 +10,7 @@ Version ending on <b>v5</b> has control through jQuery and layout with Bootstrap
 
 |Date|Description|
 |--|--|
-|18th August 2018|Fixed typo in Pin names amd fixed endedAT to currPos|
+|16th August 2018|Fixed typo in Pin names amd fixed endedAT to currPos|
 |8th August 2018|Added EEprom store of maximum steps|
 |4th April 2018|Graphical|
 

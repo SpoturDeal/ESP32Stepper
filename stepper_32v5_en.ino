@@ -25,8 +25,8 @@ int DirPin = 18;       // Direction GPIO
 int StepPin = 19;      // Step GPIO
 int EnablePin = 21;     // Stepper enable pin
 int MicroStep1Pin = 34; // Stepper MS1
-int Microstep2Pin = 35; // Stepper MS2
-int Microstep3Pin = 32; // Stepper MS3
+int MicroStep2Pin = 35; // Stepper MS2
+int MicroStep3Pin = 32; // Stepper MS3
 int motorSpeed = 1000;      // Set step delay for motor in microseconds (smaller is faster)
 int currPos = 0;
 int oneRotation = 3200; // 200 x 1.8 degrees per step = 360
@@ -327,7 +327,7 @@ void rollUp(int doSteps) {
 }
 void stopRoll(){
     // write current position to EEprom
-    writeData(EEcurrStep,endedAT);
+    writeData(EEcurrStep,currPos);
     if (debugPrint ==true){
        Serial.println("Stop");
     }

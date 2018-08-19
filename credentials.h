@@ -7,10 +7,15 @@
 //  OTA makes it possible to update over the air without pressing a button
 
 
-//                  WIFI
+//                  WIFI           (leave empty if you want to set by browser)
 
-#define my_SSID "***YOUR_WIFI_SSID"          // ssid of your accesspoint
-#define my_PASSWORD "***YOUR_WIFI_PASSWORD"  // password of access point
+#define my_SSID "***YOUR SSID***"           // ssid of your accesspoint
+#define my_PASSWORD "***YOUR_PASSWORD***"  // password of access point
+
+//                  ACCESS POINT
+
+#define  ap_SSID  "Esp32AP_ROLL"  // not shown or unsecured when secret is too short
+#define  ap_SECRET "hellolol"     // minimum length of secret is 8 characters
 
 //                  MQTT
 

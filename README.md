@@ -4,12 +4,15 @@ USE Stepper Motor with ESP32
 Use a Steppermotor through Wifi and conrtol it with Domoticz or from your browser.
 For use in Domoticz change the url to http://{ip_address}/api/stepper/..... this will result in a sinlge line reply
 
-Version ending on <b>v5</b> has control through jQuery and layout with Bootstrap and Fontawesome.
+All versions have control through jQuery and layout with Bootstrap and Fontawesome.
+
+Soon MQTT will be included.
 
 ## Updates
 
 |Date|Description|
 |--|--|
+|19th August 2018|Update code with more structure
 |16th August 2018|Fixed typo in Pin names amd fixed endedAT to currPos|
 |8th August 2018|Added EEprom store of maximum steps|
 |4th April 2018|Graphical|
@@ -71,7 +74,7 @@ Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3 <a href="http
 ```
 /*
  #ESP32 Web Server to Control Stepper motor
- new version 08 April 2018
+ new version 19 April 2018
  Board: DOIT ESP32 DEVKIT V1, 80Mhz, 4MB(32Mhz),921600 None op COM3
  Driver: A4988 Driver
  Stepper: type 17HS1362-P4130
